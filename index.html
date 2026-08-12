@@ -153,6 +153,8 @@
             <form id="orderForm" style="flex-direction: row; flex-wrap: wrap; align-items: center;">
                 <input type="date" id="orderDate" required style="flex-grow: 1;">
                 <input type="text" id="orderClient" placeholder="Client Name or Item ordered..." required style="flex-grow: 2;">
+                <!-- NEW: Price Input -->
+                <input type="number" id="orderPrice" placeholder="Price (₱)" required min="0" step="0.01" style="flex-grow: 1;">
                 <select id="orderStatus" required style="flex-grow: 1;">
                     <option value="Not Paid">Not Paid</option>
                     <option value="Paid">Paid</option>
@@ -162,7 +164,8 @@
             </form>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Date</th><th>Client/Item</th><th>Status</th><th class="action-cell">Action</th></tr></thead>
+                    <!-- NEW: Price Column Header -->
+                    <thead><tr><th>Date</th><th>Client/Item</th><th>Price</th><th>Status</th><th class="action-cell">Action</th></tr></thead>
                     <tbody id="ordersTable"></tbody>
                 </table>
             </div>
@@ -231,7 +234,6 @@
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-        // Your New Generic Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDl-nmR6GLbpRZi-eR_8VGHldZqIZjnADQ",
             authDomain: "business-system-backend.firebaseapp.com",
@@ -242,13 +244,11 @@
             appId: "1:326335796651:web:ea401f53fb760dd6b72eee"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const auth = getAuth(app);
         const dbRef = ref(db, 'business_data');
 
-        // App State
         let inventory = [];
         let sales = [];
         let expenses = [];
@@ -261,15 +261,12 @@
         const mainApp = document.getElementById('mainApp');
         const loginError = document.getElementById('loginError');
 
-        // ================= SECURE AUTHENTICATION =================
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // User is signed in! Unlock the dashboard.
                 loginOverlay.style.display = 'none';
                 mainApp.style.display = 'grid';
                 updateClock();
                 
-                // Only pull data AFTER they are securely authenticated
                 onValue(dbRef, (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
@@ -285,37 +282,24 @@
                     updateUI();
                 });
             } else {
-                // User is signed out! Lock it down.
                 loginOverlay.style.display = 'flex';
                 mainApp.style.display = 'none';
             }
         });
 
-        // Login Button Logic
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPassword').value;
 
             signInWithEmailAndPassword(auth, email, pass)
-                .then(() => {
-                    loginError.style.display = 'none';
-                })
-                .catch((error) => {
-                    loginError.style.display = 'block';
-                });
+                .then(() => { loginError.style.display = 'none'; })
+                .catch((error) => { loginError.style.display = 'block'; });
         });
 
-        function logout() {
-            signOut(auth);
-        }
+        function logout() { signOut(auth); }
+        function saveData() { set(dbRef, { inventory, sales, expenses, orders, todos, notes }); }
 
-        // Save Function (Pushes data securely to the cloud)
-        function saveData() {
-            set(dbRef, { inventory, sales, expenses, orders, todos, notes });
-        }
-
-        // ================= BUSINESS LOGIC =================
         function getLocalYYYYMMDD() {
             const d = new Date();
             const year = d.getFullYear();
@@ -348,19 +332,52 @@
             renderTodos();
         }
 
+        // --- UPDATED ORDER LOGIC WITH AUTOMATION ---
         document.getElementById('orderForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            orders.push({ date: document.getElementById('orderDate').value, client: document.getElementById('orderClient').value, status: document.getElementById('orderStatus').value });
+            const date = document.getElementById('orderDate').value;
+            const client = document.getElementById('orderClient').value;
+            const price = parseFloat(document.getElementById('orderPrice').value);
+            const status = document.getElementById('orderStatus').value;
+            
+            let addedToSales = false;
+            
+            // If the user selects "Paid" right away when adding the order, record it in sales immediately.
+            if (status === "Paid" || status === "Done") {
+                sales.push({ date: date, name: client, qty: 1, total: price });
+                addedToSales = true;
+            }
+
+            orders.push({ date, client, price, status, addedToSales });
+            
             document.getElementById('orderClient').value = '';
+            document.getElementById('orderPrice').value = '';
             saveData();
         });
 
         function deleteOrder(index) { if(confirm("Delete this order record?")) { orders.splice(index, 1); saveData(); } }
+        
         function cycleOrderStatus(index) {
             const currentStatus = orders[index].status;
-            if (currentStatus === "Not Paid") orders[index].status = "Paid";
+            
+            if (currentStatus === "Not Paid") {
+                orders[index].status = "Paid";
+                
+                // AUTOMATION: If it hasn't been added to sales yet, add it now!
+                if (!orders[index].addedToSales) {
+                    sales.push({
+                        date: orders[index].date,
+                        name: orders[index].client,
+                        qty: 1,
+                        total: orders[index].price || 0
+                    });
+                    orders[index].addedToSales = true;
+                    alert("Order Paid! Successfully synced to the Sales tracker.");
+                }
+            }
             else if (currentStatus === "Paid") orders[index].status = "Done";
             else orders[index].status = "Not Paid";
+            
             saveData();
         }
 
@@ -369,7 +386,15 @@
             const displayOrders = orders.map((ord, index) => ({ ord, index })).reverse();
             displayOrders.forEach(item => {
                 let badgeClass = item.ord.status === 'Not Paid' ? 'badge-red' : (item.ord.status === 'Paid' ? 'badge-yellow' : 'badge-green');
-                oTable.innerHTML += `<tr><td>${item.ord.date}</td><td>${item.ord.client}</td><td style="cursor:pointer;" onclick="cycleOrderStatus(${item.index})" title="Click to change status"><span class="badge ${badgeClass}">${item.ord.status}</span></td><td class="action-cell"><button class="btn-del-sm" onclick="deleteOrder(${item.index})">X</button></td></tr>`;
+                let priceFormatted = item.ord.price ? item.ord.price.toFixed(2) : "0.00";
+                
+                oTable.innerHTML += `<tr>
+                    <td>${item.ord.date}</td>
+                    <td>${item.ord.client}</td>
+                    <td>₱${priceFormatted}</td>
+                    <td style="cursor:pointer;" onclick="cycleOrderStatus(${item.index})" title="Click to change status"><span class="badge ${badgeClass}">${item.ord.status}</span></td>
+                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteOrder(${item.index})">X</button></td>
+                </tr>`;
             });
         }
 
@@ -498,7 +523,6 @@
             });
         }
 
-        // Expose functions to HTML buttons
         window.updateMonthView = updateMonthView; window.logout = logout; window.deleteOrder = deleteOrder; window.cycleOrderStatus = cycleOrderStatus; window.deleteInventory = deleteInventory; window.deleteSale = deleteSale; window.deleteExpense = deleteExpense; window.saveNotes = saveNotes; window.addTodo = addTodo; window.toggleTodo = toggleTodo; window.deleteTodo = deleteTodo;
 
     </script>
