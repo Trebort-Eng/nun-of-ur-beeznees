@@ -15,52 +15,16 @@
             --danger: #ef4444;
             --warning: #f59e0b;
         }
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-        }
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
 
         /* --- LOGIN SCREEN STYLES --- */
-        #loginOverlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: var(--bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        .login-box {
-            background: var(--surface);
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 350px;
-            text-align: center;
-        }
-        .login-box img {
-            max-height: 80px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
+        #loginOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .login-box { background: var(--surface); padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        .login-box img { max-height: 80px; border-radius: 8px; margin-bottom: 20px; }
         
-        /* Main Container - Hidden by default */
-        #mainApp {
-            display: none;
-            max-width: 1400px;
-            margin: 0 auto;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-        @media (min-width: 1024px) {
-            #mainApp { grid-template-columns: 1fr 1fr 1fr; }
-        }
+        #mainApp { display: none; max-width: 1400px; margin: 0 auto; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 1024px) { #mainApp { grid-template-columns: 1fr 1fr 1fr; } }
 
-        /* Rest of the styles */
         .card { background: var(--surface); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
         .card.span-2 { grid-column: span 1; }
         @media (min-width: 1024px) { .card.span-2 { grid-column: span 2; } .card.span-3 { grid-column: 1 / -1; } }
@@ -115,17 +79,17 @@
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
+    <!-- SECURE LOGIN SCREEN -->
     <div id="loginOverlay">
         <div class="login-box">
             <img src="498314576_122095672712889559_3330513263844562241_n.jpg" alt="Logo">
             <h2>System Login</h2>
             <form id="loginForm">
-                <input type="text" id="loginUsername" placeholder="Username" required>
+                <input type="email" id="loginEmail" placeholder="Email (admin@craftyjaneyy.com)" required>
                 <input type="password" id="loginPassword" placeholder="Password" required>
                 <button type="submit" style="padding: 10px; font-size: 16px; margin-top: 10px;">Login</button>
             </form>
-            <p id="loginError" style="color: var(--danger); font-size: 13px; display: none;">Incorrect username or password.</p>
+            <p id="loginError" style="color: var(--danger); font-size: 13px; display: none;">Invalid credentials. Please try again.</p>
         </div>
     </div>
 
@@ -270,6 +234,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
         // Your Firebase configuration
         const firebaseConfig = {
@@ -285,6 +250,7 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app);
         const dbRef = ref(db, 'business_data');
 
         // App State
@@ -295,59 +261,64 @@
         let todos = [];
         let notes = {};
 
-        // Realtime Database Listener (Pulls data instantly from the cloud)
-        onValue(dbRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                inventory = data.inventory || [];
-                sales = data.sales || [];
-                expenses = data.expenses || [];
-                orders = data.orders || [];
-                todos = data.todos || [];
-                notes = data.notes || {};
-            } else {
-                inventory = []; sales = []; expenses = []; orders = []; todos = []; notes = {};
-            }
-            updateUI();
-        });
-
-        // Save Function (Pushes data instantly to the cloud)
-        function saveData() {
-            set(dbRef, { inventory, sales, expenses, orders, todos, notes });
-        }
-
-        // ================= LOGIN LOGIC =================
         const loginForm = document.getElementById('loginForm');
         const loginOverlay = document.getElementById('loginOverlay');
         const mainApp = document.getElementById('mainApp');
         const loginError = document.getElementById('loginError');
 
-        if (sessionStorage.getItem('crafty_logged_in') === 'true') {
-            unlockApp();
-        }
-
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const user = document.getElementById('loginUsername').value;
-            const pass = document.getElementById('loginPassword').value;
-
-            if (user === 'admin' && pass === 'crafty2026') {
-                sessionStorage.setItem('crafty_logged_in', 'true');
-                unlockApp();
+        // ================= SECURE AUTHENTICATION =================
+        // This listens to see if the user is securely logged in
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in! Unlock the dashboard.
+                loginOverlay.style.display = 'none';
+                mainApp.style.display = 'grid';
+                updateClock();
+                
+                // Only pull data AFTER they are securely authenticated
+                onValue(dbRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        inventory = data.inventory || [];
+                        sales = data.sales || [];
+                        expenses = data.expenses || [];
+                        orders = data.orders || [];
+                        todos = data.todos || [];
+                        notes = data.notes || {};
+                    } else {
+                        inventory = []; sales = []; expenses = []; orders = []; todos = []; notes = {};
+                    }
+                    updateUI();
+                });
             } else {
-                loginError.style.display = 'block';
+                // User is signed out! Lock it down.
+                loginOverlay.style.display = 'flex';
+                mainApp.style.display = 'none';
             }
         });
 
-        function unlockApp() {
-            loginOverlay.style.display = 'none';
-            mainApp.style.display = 'grid';
-            updateClock();
-        }
+        // Login Button Logic
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+
+            signInWithEmailAndPassword(auth, email, pass)
+                .then(() => {
+                    loginError.style.display = 'none';
+                })
+                .catch((error) => {
+                    loginError.style.display = 'block';
+                });
+        });
 
         function logout() {
-            sessionStorage.removeItem('crafty_logged_in');
-            location.reload(); 
+            signOut(auth);
+        }
+
+        // Save Function (Pushes data securely to the cloud)
+        function saveData() {
+            set(dbRef, { inventory, sales, expenses, orders, todos, notes });
         }
 
         // ================= BUSINESS LOGIC =================
@@ -385,19 +356,12 @@
 
         document.getElementById('orderForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            orders.push({
-                date: document.getElementById('orderDate').value,
-                client: document.getElementById('orderClient').value,
-                status: document.getElementById('orderStatus').value
-            });
+            orders.push({ date: document.getElementById('orderDate').value, client: document.getElementById('orderClient').value, status: document.getElementById('orderStatus').value });
             document.getElementById('orderClient').value = '';
             saveData();
         });
 
-        function deleteOrder(index) {
-            if(confirm("Delete this order record?")) { orders.splice(index, 1); saveData(); }
-        }
-
+        function deleteOrder(index) { if(confirm("Delete this order record?")) { orders.splice(index, 1); saveData(); } }
         function cycleOrderStatus(index) {
             const currentStatus = orders[index].status;
             if (currentStatus === "Not Paid") orders[index].status = "Paid";
@@ -407,134 +371,79 @@
         }
 
         function updateOrdersUI() {
-            const oTable = document.getElementById('ordersTable');
-            oTable.innerHTML = '';
+            const oTable = document.getElementById('ordersTable'); oTable.innerHTML = '';
             const displayOrders = orders.map((ord, index) => ({ ord, index })).reverse();
             displayOrders.forEach(item => {
                 let badgeClass = item.ord.status === 'Not Paid' ? 'badge-red' : (item.ord.status === 'Paid' ? 'badge-yellow' : 'badge-green');
-                oTable.innerHTML += `<tr>
-                    <td>${item.ord.date}</td>
-                    <td>${item.ord.client}</td>
-                    <td style="cursor:pointer;" onclick="cycleOrderStatus(${item.index})" title="Click to change status">
-                        <span class="badge ${badgeClass}">${item.ord.status}</span>
-                    </td>
-                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteOrder(${item.index})">X</button></td>
-                </tr>`;
+                oTable.innerHTML += `<tr><td>${item.ord.date}</td><td>${item.ord.client}</td><td style="cursor:pointer;" onclick="cycleOrderStatus(${item.index})" title="Click to change status"><span class="badge ${badgeClass}">${item.ord.status}</span></td><td class="action-cell"><button class="btn-del-sm" onclick="deleteOrder(${item.index})">X</button></td></tr>`;
             });
         }
 
         document.getElementById('inventoryForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            inventory.push({
-                name: document.getElementById('itemName').value,
-                category: document.getElementById('itemCategory').value,
-                stock: parseInt(document.getElementById('itemStock').value),
-                price: parseFloat(document.getElementById('itemPrice').value)
-            });
-            e.target.reset();
-            saveData();
+            inventory.push({ name: document.getElementById('itemName').value, category: document.getElementById('itemCategory').value, stock: parseInt(document.getElementById('itemStock').value), price: parseFloat(document.getElementById('itemPrice').value) });
+            e.target.reset(); saveData();
         });
 
-        function deleteInventory(index) {
-            if(confirm("Delete this inventory item?")) { inventory.splice(index, 1); saveData(); }
-        }
+        function deleteInventory(index) { if(confirm("Delete this inventory item?")) { inventory.splice(index, 1); saveData(); } }
 
         function updateInventoryUI() {
-            const invTable = document.getElementById('inventoryTable');
-            const saleSelect = document.getElementById('saleItem');
-            invTable.innerHTML = '';
-            saleSelect.innerHTML = '<option value="">Select Item...</option>';
+            const invTable = document.getElementById('inventoryTable'); const saleSelect = document.getElementById('saleItem');
+            invTable.innerHTML = ''; saleSelect.innerHTML = '<option value="">Select Item...</option>';
             inventory.forEach((item, index) => {
-                invTable.innerHTML += `<tr>
-                    <td><strong>${item.name}</strong> <br><small style="color:gray">${item.category}</small></td>
-                    <td>${item.stock}</td>
-                    <td>₱${item.price.toFixed(2)}</td>
-                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteInventory(${index})">X</button></td>
-                </tr>`;
+                invTable.innerHTML += `<tr><td><strong>${item.name}</strong> <br><small style="color:gray">${item.category}</small></td><td>${item.stock}</td><td>₱${item.price.toFixed(2)}</td><td class="action-cell"><button class="btn-del-sm" onclick="deleteInventory(${index})">X</button></td></tr>`;
                 if(item.stock > 0) saleSelect.innerHTML += `<option value="${index}">${item.name} (₱${item.price})</option>`;
             });
         }
 
         document.getElementById('salesForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const itemIndex = document.getElementById('saleItem').value;
-            const qty = parseInt(document.getElementById('saleQty').value);
-            const date = document.getElementById('saleDate').value;
+            const itemIndex = document.getElementById('saleItem').value; const qty = parseInt(document.getElementById('saleQty').value); const date = document.getElementById('saleDate').value;
             if (itemIndex !== "" && inventory[itemIndex].stock >= qty) {
-                const total = inventory[itemIndex].price * qty;
-                inventory[itemIndex].stock -= qty; 
+                const total = inventory[itemIndex].price * qty; inventory[itemIndex].stock -= qty; 
                 sales.push({ date, name: inventory[itemIndex].name, qty, total });
-                document.getElementById('saleQty').value = '';
-                saveData();
+                document.getElementById('saleQty').value = ''; saveData();
             } else { alert("Not enough stock available!"); }
         });
 
         function deleteSale(index) {
             if(confirm("Delete this sale? (Stock will be refunded)")) {
-                const sale = sales[index];
-                const invItem = inventory.find(i => i.name === sale.name);
+                const sale = sales[index]; const invItem = inventory.find(i => i.name === sale.name);
                 if (invItem) invItem.stock += sale.qty;
-                sales.splice(index, 1);
-                saveData();
+                sales.splice(index, 1); saveData();
             }
         }
 
         function updateSalesUI() {
-            const sTable = document.getElementById('salesTable');
-            sTable.innerHTML = '';
-            let totalSales = 0;
+            const sTable = document.getElementById('salesTable'); sTable.innerHTML = ''; let totalSales = 0;
             const displaySales = sales.map((sale, index) => ({ sale, index })).reverse();
             displaySales.forEach(item => {
-                sTable.innerHTML += `<tr>
-                    <td>${item.sale.date.substring(5)}</td>
-                    <td>${item.sale.name}</td>
-                    <td>${item.sale.qty}</td>
-                    <td>₱${item.sale.total.toFixed(2)}</td>
-                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteSale(${item.index})">X</button></td>
-                </tr>`;
+                sTable.innerHTML += `<tr><td>${item.sale.date.substring(5)}</td><td>${item.sale.name}</td><td>${item.sale.qty}</td><td>₱${item.sale.total.toFixed(2)}</td><td class="action-cell"><button class="btn-del-sm" onclick="deleteSale(${item.index})">X</button></td></tr>`;
             });
             sales.forEach(s => totalSales += s.total);
-            document.getElementById('totalSales').innerText = `₱${totalSales.toFixed(2)}`;
-            updateNetProfit();
+            document.getElementById('totalSales').innerText = `₱${totalSales.toFixed(2)}`; updateNetProfit();
         }
 
         document.getElementById('expenseForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            expenses.push({
-                date: document.getElementById('expenseDate').value,
-                desc: document.getElementById('expenseDesc').value,
-                amount: parseFloat(document.getElementById('expenseAmount').value)
-            });
-            document.getElementById('expenseDesc').value = '';
-            document.getElementById('expenseAmount').value = '';
-            saveData();
+            expenses.push({ date: document.getElementById('expenseDate').value, desc: document.getElementById('expenseDesc').value, amount: parseFloat(document.getElementById('expenseAmount').value) });
+            document.getElementById('expenseDesc').value = ''; document.getElementById('expenseAmount').value = ''; saveData();
         });
 
-        function deleteExpense(index) {
-            if(confirm("Delete this expense?")) { expenses.splice(index, 1); saveData(); }
-        }
+        function deleteExpense(index) { if(confirm("Delete this expense?")) { expenses.splice(index, 1); saveData(); } }
 
         function updateExpensesUI() {
-            const eTable = document.getElementById('expensesTable');
-            eTable.innerHTML = '';
-            let totalExpenses = 0;
+            const eTable = document.getElementById('expensesTable'); eTable.innerHTML = ''; let totalExpenses = 0;
             const displayExpenses = expenses.map((exp, index) => ({ exp, index })).reverse();
             displayExpenses.forEach(item => {
-                eTable.innerHTML += `<tr>
-                    <td>${item.exp.date.substring(5)}</td>
-                    <td>${item.exp.desc}</td>
-                    <td>₱${item.exp.amount.toFixed(2)}</td>
-                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteExpense(${item.index})">X</button></td>
-                </tr>`;
+                eTable.innerHTML += `<tr><td>${item.exp.date.substring(5)}</td><td>${item.exp.desc}</td><td>₱${item.exp.amount.toFixed(2)}</td><td class="action-cell"><button class="btn-del-sm" onclick="deleteExpense(${item.index})">X</button></td></tr>`;
             });
             expenses.forEach(e => totalExpenses += e.amount);
-            document.getElementById('totalExpenses').innerText = `₱${totalExpenses.toFixed(2)}`;
-            updateNetProfit();
+            document.getElementById('totalExpenses').innerText = `₱${totalExpenses.toFixed(2)}`; updateNetProfit();
         }
 
         function updateNetProfit() {
-            const tSales = sales.reduce((sum, s) => sum + s.total, 0);
-            const tExp = expenses.reduce((sum, e) => sum + e.amount, 0);
+            const tSales = sales.reduce((sum, s) => sum + s.total, 0); const tExp = expenses.reduce((sum, e) => sum + e.amount, 0);
             document.getElementById('netProfit').innerText = `₱${(tSales - tExp).toFixed(2)}`;
         }
 
@@ -547,23 +456,16 @@
             sales.forEach(s => { if(s.date.startsWith(selectedMonth)) mSales += s.total; });
             expenses.forEach(e => { if(e.date.startsWith(selectedMonth)) mExp += e.amount; });
             
-            document.getElementById('monthSales').innerText = `₱${mSales.toFixed(2)}`;
-            document.getElementById('monthExpenses').innerText = `₱${mExp.toFixed(2)}`;
-            document.getElementById('monthProfit').innerText = `₱${(mSales - mExp).toFixed(2)}`;
-            
+            document.getElementById('monthSales').innerText = `₱${mSales.toFixed(2)}`; document.getElementById('monthExpenses').innerText = `₱${mExp.toFixed(2)}`; document.getElementById('monthProfit').innerText = `₱${(mSales - mExp).toFixed(2)}`;
             document.getElementById('monthlyNotes').value = notes[selectedMonth] || '';
             renderCalendar(selectedMonth);
         }
 
         function renderCalendar(monthStr) {
-            const [year, month] = monthStr.split('-');
-            const firstDay = new Date(year, month - 1, 1).getDay();
-            const daysInMonth = new Date(year, month, 0).getDate();
+            const [year, month] = monthStr.split('-'); const firstDay = new Date(year, month - 1, 1).getDay(); const daysInMonth = new Date(year, month, 0).getDate();
             const calGrid = document.getElementById('calendarGrid');
-            
             const daysOfWeek = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
             let html = daysOfWeek.map(d => `<div class="cal-header">${d}</div>`).join('');
-            
             for(let i=0; i<firstDay; i++) { html += `<div class="cal-day empty"></div>`; }
             
             const todayDStr = getLocalYYYYMMDD();
@@ -585,56 +487,25 @@
 
         function saveNotes() {
             const selectedMonth = document.getElementById('monthSelector').value;
-            notes[selectedMonth] = document.getElementById('monthlyNotes').value;
-            saveData();
+            notes[selectedMonth] = document.getElementById('monthlyNotes').value; saveData();
         }
 
         function addTodo() {
-            const input = document.getElementById('todoInput');
-            if(input.value.trim() === '') return;
-            todos.push({ id: Date.now(), text: input.value, done: false });
-            input.value = '';
-            saveData();
+            const input = document.getElementById('todoInput'); if(input.value.trim() === '') return;
+            todos.push({ id: Date.now(), text: input.value, done: false }); input.value = ''; saveData();
         }
 
-        function toggleTodo(id) {
-            const todo = todos.find(t => t.id === id);
-            if(todo) { todo.done = !todo.done; saveData(); }
-        }
-
-        function deleteTodo(id) {
-            todos = todos.filter(t => t.id !== id);
-            saveData();
-        }
-
+        function toggleTodo(id) { const todo = todos.find(t => t.id === id); if(todo) { todo.done = !todo.done; saveData(); } }
+        function deleteTodo(id) { todos = todos.filter(t => t.id !== id); saveData(); }
         function renderTodos() {
-            const list = document.getElementById('todoList');
-            list.innerHTML = '';
+            const list = document.getElementById('todoList'); list.innerHTML = '';
             todos.forEach(todo => {
-                list.innerHTML += `
-                    <li class="todo-item ${todo.done ? 'done' : ''}">
-                        <span>${todo.text}</span>
-                        <div class="todo-actions">
-                            <button class="btn-done" onclick="toggleTodo(${todo.id})">✓</button>
-                            <button class="btn-del-sm" onclick="deleteTodo(${todo.id})">✕</button>
-                        </div>
-                    </li>
-                `;
+                list.innerHTML += `<li class="todo-item ${todo.done ? 'done' : ''}"><span>${todo.text}</span><div class="todo-actions"><button class="btn-done" onclick="toggleTodo(${todo.id})">✓</button><button class="btn-del-sm" onclick="deleteTodo(${todo.id})">✕</button></div></li>`;
             });
         }
 
         // Expose functions to HTML buttons
-        window.updateMonthView = updateMonthView;
-        window.logout = logout;
-        window.deleteOrder = deleteOrder;
-        window.cycleOrderStatus = cycleOrderStatus;
-        window.deleteInventory = deleteInventory;
-        window.deleteSale = deleteSale;
-        window.deleteExpense = deleteExpense;
-        window.saveNotes = saveNotes;
-        window.addTodo = addTodo;
-        window.toggleTodo = toggleTodo;
-        window.deleteTodo = deleteTodo;
+        window.updateMonthView = updateMonthView; window.logout = logout; window.deleteOrder = deleteOrder; window.cycleOrderStatus = cycleOrderStatus; window.deleteInventory = deleteInventory; window.deleteSale = deleteSale; window.deleteExpense = deleteExpense; window.saveNotes = saveNotes; window.addTodo = addTodo; window.toggleTodo = toggleTodo; window.deleteTodo = deleteTodo;
 
     </script>
 </body>
