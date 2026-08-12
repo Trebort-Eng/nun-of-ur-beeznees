@@ -43,7 +43,7 @@
         button { background-color: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
         button:hover { background-color: #1d4ed8; }
         
-        .table-container { overflow-y: auto; max-height: 220px; border: 1px solid var(--border); border-radius: 4px;}
+        .table-container { overflow-y: auto; max-height: 220px; border: 1px solid var(--border); border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
         th { background-color: #f8fafc; position: sticky; top: 0; z-index: 1;}
@@ -149,7 +149,7 @@
         </div>
 
         <div class="card span-3">
-            <h2>Order Tracker (Controls Calendar & Sales)</h2>
+            <h2>Order Tracker (Filtered by Selected Month)</h2>
             <form id="orderForm" style="flex-direction: row; flex-wrap: wrap; align-items: center;">
                 <input type="date" id="orderDate" required style="flex-grow: 1;">
                 <input type="text" id="orderClient" placeholder="Client Name or Item ordered..." required style="flex-grow: 2;">
@@ -291,7 +291,6 @@
         function updateUI() {
             updateSalesUI();
             updateExpensesUI();
-            updateOrdersUI();
             updateMonthView();
             renderTodos();
         }
@@ -331,7 +330,6 @@
         function cycleOrderStatus(index) {
             const order = orders[index];
             
-            // Cycle: Not Paid -> Paid -> Done -> Not Paid
             if (order.status === "Not Paid") {
                 order.status = "Paid";
             } else if (order.status === "Paid") {
@@ -340,7 +338,6 @@
                 order.status = "Not Paid";
             }
             
-            // Automatically add or remove from sales based on the new status
             if (order.status === "Not Paid") {
                 sales = sales.filter(s => s.id !== order.id);
                 order.addedToSales = false;
@@ -359,8 +356,17 @@
         }
 
         function updateOrdersUI() {
-            const oTable = document.getElementById('ordersTable'); oTable.innerHTML = '';
-            const displayOrders = orders.map((ord, index) => ({ ord, index })).reverse();
+            const selectedMonth = document.getElementById('monthSelector').value;
+            const oTable = document.getElementById('ordersTable'); 
+            oTable.innerHTML = '';
+            
+            // Filter orders to only show the ones belonging to the selected month
+            const filteredOrders = orders.filter(ord => ord.date && ord.date.startsWith(selectedMonth));
+            const displayOrders = filteredOrders.map((ord) => {
+                const index = orders.indexOf(ord);
+                return { ord, index };
+            }).reverse();
+
             displayOrders.forEach(item => {
                 let badgeClass = item.ord.status === 'Not Paid' ? 'badge-red' : (item.ord.status === 'Paid' ? 'badge-yellow' : 'badge-green');
                 let priceFormatted = item.ord.price ? item.ord.price.toFixed(2) : "0.00";
@@ -430,6 +436,8 @@
             document.getElementById('monthProfit').innerText = `₱${(mSales - mExp).toFixed(2)}`;
             document.getElementById('monthlyNotes').value = notes[selectedMonth] || '';
             renderCalendar(selectedMonth);
+            updateOrdersUI();
+            updateSalesUI();
         }
 
         function renderCalendar(monthStr) {
