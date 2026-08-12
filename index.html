@@ -180,7 +180,7 @@
         </div>
 
         <div class="card">
-            <h2>Record Expense</h2>
+            <h2>Record Expense (Filtered by Month)</h2>
             <form id="expenseForm">
                 <input type="date" id="expenseDate" required>
                 <input type="text" id="expenseDesc" placeholder="Description" required>
@@ -290,7 +290,6 @@
 
         function updateUI() {
             updateSalesUI();
-            updateExpensesUI();
             updateMonthView();
             renderTodos();
         }
@@ -360,7 +359,6 @@
             const oTable = document.getElementById('ordersTable'); 
             oTable.innerHTML = '';
             
-            // Filter orders to only show the ones belonging to the selected month
             const filteredOrders = orders.filter(ord => ord.date && ord.date.startsWith(selectedMonth));
             const displayOrders = filteredOrders.map((ord) => {
                 const index = orders.indexOf(ord);
@@ -406,14 +404,24 @@
         function deleteExpense(index) { if(confirm("Delete this expense?")) { expenses.splice(index, 1); saveData(); } }
 
         function updateExpensesUI() {
-            const eTable = document.getElementById('expensesTable'); eTable.innerHTML = ''; let totalExpenses = 0;
-            const displayExpenses = expenses.map((exp, index) => ({ exp, index })).reverse();
+            const selectedMonth = document.getElementById('monthSelector').value;
+            const eTable = document.getElementById('expensesTable'); 
+            eTable.innerHTML = ''; 
+            
+            const filteredExpenses = expenses.filter(exp => exp.date && exp.date.startsWith(selectedMonth));
+            const displayExpenses = filteredExpenses.map((exp) => {
+                const index = expenses.indexOf(exp);
+                return { exp, index };
+            }).reverse();
+
             displayExpenses.forEach(item => {
-                eTable.innerHTML += `<tr><td>${item.exp.date.substring(5)}</td><td>${item.exp.desc}</td><td>₱${item.exp.amount.toFixed(2)}</td><td class="action-cell"><button class="btn-del-sm" onclick="deleteExpense(${item.index})">X</button></td></tr>`;
+                eTable.innerHTML += `<tr>
+                    <td>${item.exp.date.substring(5)}</td>
+                    <td>${item.exp.desc}</td>
+                    <td>₱${item.exp.amount.toFixed(2)}</td>
+                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteExpense(${item.index})">X</button></td>
+                </tr>`;
             });
-            expenses.forEach(e => totalExpenses += e.amount);
-            document.getElementById('totalExpenses').innerText = `₱${totalExpenses.toFixed(2)}`;
-            updateNetProfit();
         }
 
         function updateNetProfit() {
@@ -438,6 +446,7 @@
             renderCalendar(selectedMonth);
             updateOrdersUI();
             updateSalesUI();
+            updateExpensesUI();
         }
 
         function renderCalendar(monthStr) {
