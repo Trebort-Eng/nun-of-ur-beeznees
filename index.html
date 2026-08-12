@@ -22,16 +22,45 @@
             margin: 0;
             padding: 20px;
         }
-        .container {
+
+        /* --- LOGIN SCREEN STYLES --- */
+        #loginOverlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .login-box {
+            background: var(--surface);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+        .login-box img {
+            max-height: 80px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        /* Main Container - Hidden by default */
+        #mainApp {
+            display: none;
             max-width: 1400px;
             margin: 0 auto;
-            display: grid;
             grid-template-columns: 1fr;
             gap: 20px;
         }
         @media (min-width: 1024px) {
-            .container { grid-template-columns: 1fr 1fr 1fr; }
+            #mainApp { grid-template-columns: 1fr 1fr 1fr; }
         }
+
+        /* Rest of the styles */
         .card {
             background: var(--surface);
             padding: 20px;
@@ -46,63 +75,20 @@
             .card.span-3 { grid-column: 1 / -1; }
         }
         
-        /* Logo and Header Styles */
-        .brand-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .brand-logo {
-            max-height: 60px;
-            width: auto;
-            border-radius: 8px;
-        }
-        #liveClock {
-            font-size: 14px;
-            color: #64748b;
-            font-weight: 500;
-            margin-top: 4px;
-        }
+        .brand-header { display: flex; align-items: center; gap: 15px; }
+        .brand-logo { max-height: 60px; width: auto; border-radius: 8px; }
+        #liveClock { font-size: 14px; color: #64748b; font-weight: 500; margin-top: 4px; }
 
         h1, h2, h3 { margin-top: 0; margin-bottom: 15px; }
-        .header-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        .dashboard-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .stat-box {
-            padding: 15px;
-            border-radius: 6px;
-            background: #eff6ff;
-            text-align: center;
-            border: 1px solid #bfdbfe;
-        }
+        .header-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .stat-box { padding: 15px; border-radius: 6px; background: #eff6ff; text-align: center; border: 1px solid #bfdbfe; }
         .stat-box h3 { margin: 0 0 10px 0; font-size: 14px; color: #475569; }
         .stat-box p { margin: 0; font-size: 24px; font-weight: bold; color: var(--primary); }
         form, .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
         .input-group.row { flex-direction: row; }
-        input, select, button, textarea {
-            padding: 8px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-        }
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
+        input, select, button, textarea { padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit; }
+        button { background-color: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
         button:hover { background-color: #1d4ed8; }
         
         .table-container { overflow-y: auto; max-height: 220px; border: 1px solid var(--border); border-radius: 4px;}
@@ -114,29 +100,15 @@
         .btn-del-sm:hover { background-color: #b91c1c; }
         .action-cell { text-align: center; width: 60px; }
 
-        /* Smaller Calendar Styles */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
         .cal-header { font-weight: bold; background: #f1f5f9; padding: 4px 0; border-radius: 4px; font-size: 11px; }
-        .cal-day { 
-            border: 1px solid var(--border); 
-            padding: 6px 0; 
-            border-radius: 4px; 
-            min-height: 25px; 
-            font-size: 12px;
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            font-weight: 500;
-        }
+        .cal-day { border: 1px solid var(--border); padding: 6px 0; border-radius: 4px; min-height: 25px; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 500; }
         .cal-day.empty { border: none; background: transparent; }
-        
-        /* Calendar Status Colors */
         .status-not-paid { background-color: #fecaca; color: #991b1b; border-color: #f87171; }
         .status-paid { background-color: #fef08a; color: #854d0e; border-color: #facc15; }
         .status-done { background-color: #bbf7d0; color: #166534; border-color: #4ade80; }
         .cal-day.today { border: 2px solid var(--primary); font-weight: 900; }
         
-        /* To-Do Styles */
         .todo-list { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; max-height: 180px; }
         .todo-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 14px;}
         .todo-item.done span { text-decoration: line-through; color: #9ca3af; }
@@ -153,12 +125,25 @@
 </head>
 <body>
 
-    <div class="container">
-        <!-- Global Dashboard & Month Selector -->
+    <!-- NEW: LOGIN SCREEN -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <img src="498314576_122095672712889559_3330513263844562241_n.jpg" alt="Logo">
+            <h2>System Login</h2>
+            <form id="loginForm">
+                <input type="text" id="loginUsername" placeholder="Username" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit" style="padding: 10px; font-size: 16px; margin-top: 10px;">Login</button>
+            </form>
+            <p id="loginError" style="color: var(--danger); font-size: 13px; display: none;">Incorrect username or password.</p>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD (Hidden until logged in) -->
+    <div class="container" id="mainApp">
         <div class="card span-3">
             <div class="header-controls">
                 <div class="brand-header">
-                    <!-- LOGO FILENAME UPDATED HERE -->
                     <img src="498314576_122095672712889559_3330513263844562241_n.jpg" alt="Crafty Janeyy Logo" class="brand-logo">
                     <div>
                         <h1 style="margin: 0;">Business Overview</h1>
@@ -168,6 +153,7 @@
                 <div>
                     <label for="monthSelector" style="font-weight: bold; margin-right: 10px;">Select Month:</label>
                     <input type="month" id="monthSelector" onchange="updateMonthView()">
+                    <button onclick="logout()" style="margin-left: 15px; background-color: var(--danger);">Logout</button>
                 </div>
             </div>
             
@@ -179,7 +165,6 @@
             </div>
         </div>
 
-        <!-- Monthly Report & Calendar -->
         <div class="card span-2">
             <h2>Monthly Report: <span id="reportMonthLabel"></span></h2>
             <div class="dashboard-stats">
@@ -201,7 +186,6 @@
             <div class="calendar-grid" id="calendarGrid" style="margin-top: 10px;"></div>
         </div>
 
-        <!-- Monthly Notes & To-Do List -->
         <div class="card">
             <h2>Monthly Notes</h2>
             <textarea id="monthlyNotes" placeholder="Write notes, goals, or reminders for this month..." onchange="saveNotes()"></textarea>
@@ -214,7 +198,6 @@
             <ul class="todo-list" id="todoList"></ul>
         </div>
 
-        <!-- NEW: Order Tracker -->
         <div class="card span-3">
             <h2>Order Tracker (Controls Calendar Colors)</h2>
             <form id="orderForm" style="flex-direction: row; flex-wrap: wrap; align-items: center;">
@@ -235,7 +218,6 @@
             </div>
         </div>
 
-        <!-- Inventory -->
         <div class="card">
             <h2>Inventory</h2>
             <form id="inventoryForm">
@@ -261,7 +243,6 @@
             </div>
         </div>
 
-        <!-- Record Sales -->
         <div class="card">
             <h2>Record Sale</h2>
             <form id="salesForm">
@@ -278,7 +259,6 @@
             </div>
         </div>
 
-        <!-- Record Expenses -->
         <div class="card">
             <h2>Record Expense</h2>
             <form id="expenseForm">
@@ -297,7 +277,44 @@
     </div>
 
     <script>
-        // Helper to get local date perfectly formatted as YYYY-MM-DD
+        // ================= LOGIN LOGIC =================
+        const loginForm = document.getElementById('loginForm');
+        const loginOverlay = document.getElementById('loginOverlay');
+        const mainApp = document.getElementById('mainApp');
+        const loginError = document.getElementById('loginError');
+
+        // Check if already logged in during this session
+        if (sessionStorage.getItem('crafty_logged_in') === 'true') {
+            unlockApp();
+        }
+
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('loginUsername').value;
+            const pass = document.getElementById('loginPassword').value;
+
+            // Change these to whatever you want!
+            if (user === 'admin' && pass === 'crafty2026') {
+                sessionStorage.setItem('crafty_logged_in', 'true');
+                unlockApp();
+            } else {
+                loginError.style.display = 'block';
+            }
+        });
+
+        function unlockApp() {
+            loginOverlay.style.display = 'none';
+            mainApp.style.display = 'grid'; // Brings back the CSS grid
+            updateClock();
+            updateUI(); // Load all data
+        }
+
+        function logout() {
+            sessionStorage.removeItem('crafty_logged_in');
+            location.reload(); // Refresh the page to show lock screen
+        }
+
+        // ================= BUSINESS LOGIC =================
         function getLocalYYYYMMDD() {
             const d = new Date();
             const year = d.getFullYear();
@@ -306,7 +323,6 @@
             return `${year}-${month}-${day}`;
         }
 
-        // State Management
         let inventory = JSON.parse(localStorage.getItem('biz_inventory')) || [];
         let sales = JSON.parse(localStorage.getItem('biz_sales')) || [];
         let expenses = JSON.parse(localStorage.getItem('biz_expenses')) || [];
@@ -314,7 +330,6 @@
         let todos = JSON.parse(localStorage.getItem('biz_todos')) || [];
         let notes = JSON.parse(localStorage.getItem('biz_notes')) || {};
 
-        // Date Defaults - NOW USING LOCAL TIME
         const todayStr = getLocalYYYYMMDD();
         document.getElementById('saleDate').value = todayStr;
         document.getElementById('expenseDate').value = todayStr;
@@ -322,7 +337,6 @@
         const currentMonthStr = todayStr.substring(0, 7);
         document.getElementById('monthSelector').value = currentMonthStr;
 
-        // Clock Function
         function updateClock() {
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -330,7 +344,6 @@
             document.getElementById('liveClock').innerText = `${dateStr} | ${timeStr}`;
         }
         setInterval(updateClock, 1000);
-        updateClock();
 
         function saveData() {
             localStorage.setItem('biz_inventory', JSON.stringify(inventory));
@@ -351,7 +364,6 @@
             renderTodos();
         }
 
-        // ================= ORDERS =================
         document.getElementById('orderForm').addEventListener('submit', (e) => {
             e.preventDefault();
             orders.push({
@@ -381,9 +393,7 @@
         function updateOrdersUI() {
             const oTable = document.getElementById('ordersTable');
             oTable.innerHTML = '';
-            
             const displayOrders = orders.map((ord, index) => ({ ord, index })).reverse();
-            
             displayOrders.forEach(item => {
                 let badgeClass = item.ord.status === 'Not Paid' ? 'badge-red' : (item.ord.status === 'Paid' ? 'badge-yellow' : 'badge-green');
                 oTable.innerHTML += `<tr>
@@ -397,7 +407,6 @@
             });
         }
 
-        // ================= INVENTORY =================
         document.getElementById('inventoryForm').addEventListener('submit', (e) => {
             e.preventDefault();
             inventory.push({
@@ -422,7 +431,6 @@
             const saleSelect = document.getElementById('saleItem');
             invTable.innerHTML = '';
             saleSelect.innerHTML = '<option value="">Select Item...</option>';
-            
             inventory.forEach((item, index) => {
                 invTable.innerHTML += `<tr>
                     <td><strong>${item.name}</strong> <br><small style="color:gray">${item.category}</small></td>
@@ -434,7 +442,6 @@
             });
         }
 
-        // ================= SALES =================
         document.getElementById('salesForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const itemIndex = document.getElementById('saleItem').value;
@@ -481,7 +488,6 @@
             updateNetProfit();
         }
 
-        // ================= EXPENSES =================
         document.getElementById('expenseForm').addEventListener('submit', (e) => {
             e.preventDefault();
             expenses.push({
@@ -525,7 +531,6 @@
             document.getElementById('netProfit').innerText = `₱${(tSales - tExp).toFixed(2)}`;
         }
 
-        // ================= MONTHLY REPORTS & CALENDAR =================
         function updateMonthView() {
             const selectedMonth = document.getElementById('monthSelector').value;
             const dateObj = new Date(selectedMonth + "-02");
@@ -554,12 +559,10 @@
             
             for(let i=0; i<firstDay; i++) { html += `<div class="cal-day empty"></div>`; }
             
-            // NOW USING LOCAL TIME FOR CALENDAR OUTLINE
             const todayDStr = getLocalYYYYMMDD();
             
             for(let i=1; i<=daysInMonth; i++) {
                 const currentDStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
-                
                 let classes = "cal-day";
                 if(currentDStr === todayDStr) classes += " today";
                 
@@ -573,7 +576,6 @@
                         classes += " status-done"; 
                     }
                 }
-                
                 html += `<div class="${classes}">${i}</div>`;
             }
             calGrid.innerHTML = html;
@@ -585,7 +587,6 @@
             localStorage.setItem('biz_notes', JSON.stringify(notes));
         }
 
-        // ================= TO-DO LIST =================
         function addTodo() {
             const input = document.getElementById('todoInput');
             if(input.value.trim() === '') return;
@@ -619,8 +620,6 @@
                 `;
             });
         }
-
-        updateUI();
     </script>
 </body>
 </html>
