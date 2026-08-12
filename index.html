@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crafty Janeyy Manager</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        @media (min-width: 1024px) {
+            .container { grid-template-columns: 1fr 1fr 1fr; }
+        }
+        .card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        .card.span-2 { grid-column: span 1; }
+        @media (min-width: 1024px) {
+            .card.span-2 { grid-column: span 2; }
+            .card.span-3 { grid-column: 1 / -1; }
+        }
+        
+        /* Logo and Header Styles */
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .brand-logo {
+            max-height: 60px;
+            width: auto;
+            border-radius: 8px;
+        }
+        #liveClock {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        h1, h2, h3 { margin-top: 0; margin-bottom: 15px; }
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            padding: 15px;
+            border-radius: 6px;
+            background: #eff6ff;
+            text-align: center;
+            border: 1px solid #bfdbfe;
+        }
+        .stat-box h3 { margin: 0 0 10px 0; font-size: 14px; color: #475569; }
+        .stat-box p { margin: 0; font-size: 24px; font-weight: bold; color: var(--primary); }
+        form, .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .input-group.row { flex-direction: row; }
+        input, select, button, textarea {
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: #1d4ed8; }
+        
+        .table-container { overflow-y: auto; max-height: 220px; border: 1px solid var(--border); border-radius: 4px;}
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+        th { background-color: #f8fafc; position: sticky; top: 0; z-index: 1;}
+        
+        .btn-del-sm { background-color: var(--danger); padding: 4px 8px; font-size: 12px; }
+        .btn-del-sm:hover { background-color: #b91c1c; }
+        .action-cell { text-align: center; width: 60px; }
+
+        /* Smaller Calendar Styles */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+        .cal-header { font-weight: bold; background: #f1f5f9; padding: 4px 0; border-radius: 4px; font-size: 11px; }
+        .cal-day { 
+            border: 1px solid var(--border); 
+            padding: 6px 0; 
+            border-radius: 4px; 
+            min-height: 25px; 
+            font-size: 12px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-weight: 500;
+        }
+        .cal-day.empty { border: none; background: transparent; }
+        
+        /* Calendar Status Colors */
+        .status-not-paid { background-color: #fecaca; color: #991b1b; border-color: #f87171; }
+        .status-paid { background-color: #fef08a; color: #854d0e; border-color: #facc15; }
+        .status-done { background-color: #bbf7d0; color: #166534; border-color: #4ade80; }
+        .cal-day.today { border: 2px solid var(--primary); font-weight: 900; }
+        
+        /* To-Do Styles */
+        .todo-list { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; max-height: 180px; }
+        .todo-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 14px;}
+        .todo-item.done span { text-decoration: line-through; color: #9ca3af; }
+        .todo-actions button { padding: 3px 6px; font-size: 11px; margin-left: 5px; }
+        .btn-done { background-color: var(--success); }
+        
+        textarea { resize: vertical; min-height: 80px; }
+        
+        .badge { padding: 3px 6px; border-radius: 12px; font-size: 11px; font-weight: bold; color: #fff;}
+        .badge-red { background-color: var(--danger); }
+        .badge-yellow { background-color: var(--warning); }
+        .badge-green { background-color: var(--success); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Global Dashboard & Month Selector -->
+        <div class="card span-3">
+            <div class="header-controls">
+                <div class="brand-header">
+                    <!-- LOGO FILENAME UPDATED HERE -->
+                    <img src="498314576_122095672712889559_3330513263844562241_n.jpg" alt="Crafty Janeyy Logo" class="brand-logo">
+                    <div>
+                        <h1 style="margin: 0;">Business Overview</h1>
+                        <div id="liveClock">Loading time...</div>
+                    </div>
+                </div>
+                <div>
+                    <label for="monthSelector" style="font-weight: bold; margin-right: 10px;">Select Month:</label>
+                    <input type="month" id="monthSelector" onchange="updateMonthView()">
+                </div>
+            </div>
+            
+            <h2 style="margin-top: 20px;">All-Time Totals</h2>
+            <div class="dashboard-stats">
+                <div class="stat-box"><h3>All-Time Sales</h3><p id="totalSales">₱0.00</p></div>
+                <div class="stat-box"><h3>All-Time Expenses</h3><p id="totalExpenses">₱0.00</p></div>
+                <div class="stat-box"><h3>All-Time Net Profit</h3><p id="netProfit">₱0.00</p></div>
+            </div>
+        </div>
+
+        <!-- Monthly Report & Calendar -->
+        <div class="card span-2">
+            <h2>Monthly Report: <span id="reportMonthLabel"></span></h2>
+            <div class="dashboard-stats">
+                <div class="stat-box"><h3>Monthly Sales</h3><p id="monthSales">₱0.00</p></div>
+                <div class="stat-box"><h3>Monthly Expenses</h3><p id="monthExpenses">₱0.00</p></div>
+                <div class="stat-box" style="background:#f0fdf4; border-color:#bbf7d0;">
+                    <h3>Monthly Profit</h3><p id="monthProfit" style="color:var(--success)">₱0.00</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 15px;">
+                <h3 style="margin: 0;">Calendar Overview</h3>
+                <div style="font-size: 11px; display: flex; gap: 10px;">
+                    <span style="color: #ef4444; font-weight: bold;">● Not Paid</span>
+                    <span style="color: #f59e0b; font-weight: bold;">● Paid</span>
+                    <span style="color: #10b981; font-weight: bold;">● Done</span>
+                </div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- Monthly Notes & To-Do List -->
+        <div class="card">
+            <h2>Monthly Notes</h2>
+            <textarea id="monthlyNotes" placeholder="Write notes, goals, or reminders for this month..." onchange="saveNotes()"></textarea>
+            
+            <h2 style="margin-top: 15px;">To-Do List</h2>
+            <div class="input-group row">
+                <input type="text" id="todoInput" placeholder="New task..." style="flex-grow: 1;">
+                <button onclick="addTodo()">Add</button>
+            </div>
+            <ul class="todo-list" id="todoList"></ul>
+        </div>
+
+        <!-- NEW: Order Tracker -->
+        <div class="card span-3">
+            <h2>Order Tracker (Controls Calendar Colors)</h2>
+            <form id="orderForm" style="flex-direction: row; flex-wrap: wrap; align-items: center;">
+                <input type="date" id="orderDate" required style="flex-grow: 1;">
+                <input type="text" id="orderClient" placeholder="Client Name or Item ordered..." required style="flex-grow: 2;">
+                <select id="orderStatus" required style="flex-grow: 1;">
+                    <option value="Not Paid">Not Paid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Done">Done</option>
+                </select>
+                <button type="submit" style="flex-grow: 1;">Add Order</button>
+            </form>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Date</th><th>Client/Item</th><th>Status</th><th class="action-cell">Action</th></tr></thead>
+                    <tbody id="ordersTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="card">
+            <h2>Inventory</h2>
+            <form id="inventoryForm">
+                <input type="text" id="itemName" placeholder="Item Name (e.g., Blue Polo)" required>
+                <input type="text" id="itemCategory" placeholder="Category (e.g., Shirt, Medal, Mug)" list="categoryList" required>
+                <datalist id="categoryList">
+                    <option value="Shirt"></option>
+                    <option value="Medal"></option>
+                    <option value="Trophy"></option>
+                    <option value="Cap"></option>
+                </datalist>
+                <div class="input-group row" style="margin-bottom:0;">
+                    <input type="number" id="itemStock" placeholder="Stock" required min="0" style="width:50%;">
+                    <input type="number" id="itemPrice" placeholder="Price (₱)" required min="0" step="0.01" style="width:50%;">
+                </div>
+                <button type="submit">Add Item</button>
+            </form>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Item</th><th>Stock</th><th>Price</th><th class="action-cell">Action</th></tr></thead>
+                    <tbody id="inventoryTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Record Sales -->
+        <div class="card">
+            <h2>Record Sale</h2>
+            <form id="salesForm">
+                <input type="date" id="saleDate" required>
+                <select id="saleItem" required><option value="">Select Item...</option></select>
+                <input type="number" id="saleQty" placeholder="Quantity Sold" required min="1">
+                <button type="submit">Record Sale</button>
+            </form>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Total</th><th class="action-cell">Action</th></tr></thead>
+                    <tbody id="salesTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Record Expenses -->
+        <div class="card">
+            <h2>Record Expense</h2>
+            <form id="expenseForm">
+                <input type="date" id="expenseDate" required>
+                <input type="text" id="expenseDesc" placeholder="Description" required>
+                <input type="number" id="expenseAmount" placeholder="Amount (₱)" required min="0" step="0.01">
+                <button type="submit">Record Expense</button>
+            </form>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th class="action-cell">Action</th></tr></thead>
+                    <tbody id="expensesTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper to get local date perfectly formatted as YYYY-MM-DD
+        function getLocalYYYYMMDD() {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // State Management
+        let inventory = JSON.parse(localStorage.getItem('biz_inventory')) || [];
+        let sales = JSON.parse(localStorage.getItem('biz_sales')) || [];
+        let expenses = JSON.parse(localStorage.getItem('biz_expenses')) || [];
+        let orders = JSON.parse(localStorage.getItem('biz_orders')) || [];
+        let todos = JSON.parse(localStorage.getItem('biz_todos')) || [];
+        let notes = JSON.parse(localStorage.getItem('biz_notes')) || {};
+
+        // Date Defaults - NOW USING LOCAL TIME
+        const todayStr = getLocalYYYYMMDD();
+        document.getElementById('saleDate').value = todayStr;
+        document.getElementById('expenseDate').value = todayStr;
+        document.getElementById('orderDate').value = todayStr;
+        const currentMonthStr = todayStr.substring(0, 7);
+        document.getElementById('monthSelector').value = currentMonthStr;
+
+        // Clock Function
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('liveClock').innerText = `${dateStr} | ${timeStr}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function saveData() {
+            localStorage.setItem('biz_inventory', JSON.stringify(inventory));
+            localStorage.setItem('biz_sales', JSON.stringify(sales));
+            localStorage.setItem('biz_expenses', JSON.stringify(expenses));
+            localStorage.setItem('biz_orders', JSON.stringify(orders));
+            localStorage.setItem('biz_todos', JSON.stringify(todos));
+            localStorage.setItem('biz_notes', JSON.stringify(notes));
+            updateUI();
+        }
+
+        function updateUI() {
+            updateInventoryUI();
+            updateSalesUI();
+            updateExpensesUI();
+            updateOrdersUI();
+            updateMonthView();
+            renderTodos();
+        }
+
+        // ================= ORDERS =================
+        document.getElementById('orderForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            orders.push({
+                date: document.getElementById('orderDate').value,
+                client: document.getElementById('orderClient').value,
+                status: document.getElementById('orderStatus').value
+            });
+            document.getElementById('orderClient').value = '';
+            saveData();
+        });
+
+        function deleteOrder(index) {
+            if(confirm("Delete this order record?")) {
+                orders.splice(index, 1);
+                saveData();
+            }
+        }
+
+        function cycleOrderStatus(index) {
+            const currentStatus = orders[index].status;
+            if (currentStatus === "Not Paid") orders[index].status = "Paid";
+            else if (currentStatus === "Paid") orders[index].status = "Done";
+            else orders[index].status = "Not Paid";
+            saveData();
+        }
+
+        function updateOrdersUI() {
+            const oTable = document.getElementById('ordersTable');
+            oTable.innerHTML = '';
+            
+            const displayOrders = orders.map((ord, index) => ({ ord, index })).reverse();
+            
+            displayOrders.forEach(item => {
+                let badgeClass = item.ord.status === 'Not Paid' ? 'badge-red' : (item.ord.status === 'Paid' ? 'badge-yellow' : 'badge-green');
+                oTable.innerHTML += `<tr>
+                    <td>${item.ord.date}</td>
+                    <td>${item.ord.client}</td>
+                    <td style="cursor:pointer;" onclick="cycleOrderStatus(${item.index})" title="Click to change status">
+                        <span class="badge ${badgeClass}">${item.ord.status}</span>
+                    </td>
+                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteOrder(${item.index})">X</button></td>
+                </tr>`;
+            });
+        }
+
+        // ================= INVENTORY =================
+        document.getElementById('inventoryForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            inventory.push({
+                name: document.getElementById('itemName').value,
+                category: document.getElementById('itemCategory').value,
+                stock: parseInt(document.getElementById('itemStock').value),
+                price: parseFloat(document.getElementById('itemPrice').value)
+            });
+            e.target.reset();
+            saveData();
+        });
+
+        function deleteInventory(index) {
+            if(confirm("Delete this inventory item?")) {
+                inventory.splice(index, 1);
+                saveData();
+            }
+        }
+
+        function updateInventoryUI() {
+            const invTable = document.getElementById('inventoryTable');
+            const saleSelect = document.getElementById('saleItem');
+            invTable.innerHTML = '';
+            saleSelect.innerHTML = '<option value="">Select Item...</option>';
+            
+            inventory.forEach((item, index) => {
+                invTable.innerHTML += `<tr>
+                    <td><strong>${item.name}</strong> <br><small style="color:gray">${item.category}</small></td>
+                    <td>${item.stock}</td>
+                    <td>₱${item.price.toFixed(2)}</td>
+                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteInventory(${index})">X</button></td>
+                </tr>`;
+                if(item.stock > 0) saleSelect.innerHTML += `<option value="${index}">${item.name} (₱${item.price})</option>`;
+            });
+        }
+
+        // ================= SALES =================
+        document.getElementById('salesForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const itemIndex = document.getElementById('saleItem').value;
+            const qty = parseInt(document.getElementById('saleQty').value);
+            const date = document.getElementById('saleDate').value;
+            
+            if (itemIndex !== "" && inventory[itemIndex].stock >= qty) {
+                const total = inventory[itemIndex].price * qty;
+                inventory[itemIndex].stock -= qty; 
+                sales.push({ date, name: inventory[itemIndex].name, qty, total });
+                document.getElementById('saleQty').value = '';
+                saveData();
+            } else {
+                alert("Not enough stock available!");
+            }
+        });
+
+        function deleteSale(index) {
+            if(confirm("Delete this sale? (Stock will be refunded)")) {
+                const sale = sales[index];
+                const invItem = inventory.find(i => i.name === sale.name);
+                if (invItem) invItem.stock += sale.qty;
+                sales.splice(index, 1);
+                saveData();
+            }
+        }
+
+        function updateSalesUI() {
+            const sTable = document.getElementById('salesTable');
+            sTable.innerHTML = '';
+            let totalSales = 0;
+            const displaySales = sales.map((sale, index) => ({ sale, index })).reverse();
+            displaySales.forEach(item => {
+                sTable.innerHTML += `<tr>
+                    <td>${item.sale.date.substring(5)}</td>
+                    <td>${item.sale.name}</td>
+                    <td>${item.sale.qty}</td>
+                    <td>₱${item.sale.total.toFixed(2)}</td>
+                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteSale(${item.index})">X</button></td>
+                </tr>`;
+            });
+            sales.forEach(s => totalSales += s.total);
+            document.getElementById('totalSales').innerText = `₱${totalSales.toFixed(2)}`;
+            updateNetProfit();
+        }
+
+        // ================= EXPENSES =================
+        document.getElementById('expenseForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            expenses.push({
+                date: document.getElementById('expenseDate').value,
+                desc: document.getElementById('expenseDesc').value,
+                amount: parseFloat(document.getElementById('expenseAmount').value)
+            });
+            document.getElementById('expenseDesc').value = '';
+            document.getElementById('expenseAmount').value = '';
+            saveData();
+        });
+
+        function deleteExpense(index) {
+            if(confirm("Delete this expense?")) {
+                expenses.splice(index, 1);
+                saveData();
+            }
+        }
+
+        function updateExpensesUI() {
+            const eTable = document.getElementById('expensesTable');
+            eTable.innerHTML = '';
+            let totalExpenses = 0;
+            const displayExpenses = expenses.map((exp, index) => ({ exp, index })).reverse();
+            displayExpenses.forEach(item => {
+                eTable.innerHTML += `<tr>
+                    <td>${item.exp.date.substring(5)}</td>
+                    <td>${item.exp.desc}</td>
+                    <td>₱${item.exp.amount.toFixed(2)}</td>
+                    <td class="action-cell"><button class="btn-del-sm" onclick="deleteExpense(${item.index})">X</button></td>
+                </tr>`;
+            });
+            expenses.forEach(e => totalExpenses += e.amount);
+            document.getElementById('totalExpenses').innerText = `₱${totalExpenses.toFixed(2)}`;
+            updateNetProfit();
+        }
+
+        function updateNetProfit() {
+            const tSales = sales.reduce((sum, s) => sum + s.total, 0);
+            const tExp = expenses.reduce((sum, e) => sum + e.amount, 0);
+            document.getElementById('netProfit').innerText = `₱${(tSales - tExp).toFixed(2)}`;
+        }
+
+        // ================= MONTHLY REPORTS & CALENDAR =================
+        function updateMonthView() {
+            const selectedMonth = document.getElementById('monthSelector').value;
+            const dateObj = new Date(selectedMonth + "-02");
+            document.getElementById('reportMonthLabel').innerText = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            let mSales = 0, mExp = 0;
+            sales.forEach(s => { if(s.date.startsWith(selectedMonth)) mSales += s.total; });
+            expenses.forEach(e => { if(e.date.startsWith(selectedMonth)) mExp += e.amount; });
+            
+            document.getElementById('monthSales').innerText = `₱${mSales.toFixed(2)}`;
+            document.getElementById('monthExpenses').innerText = `₱${mExp.toFixed(2)}`;
+            document.getElementById('monthProfit').innerText = `₱${(mSales - mExp).toFixed(2)}`;
+            
+            document.getElementById('monthlyNotes').value = notes[selectedMonth] || '';
+            renderCalendar(selectedMonth);
+        }
+
+        function renderCalendar(monthStr) {
+            const [year, month] = monthStr.split('-');
+            const firstDay = new Date(year, month - 1, 1).getDay();
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const calGrid = document.getElementById('calendarGrid');
+            
+            const daysOfWeek = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            let html = daysOfWeek.map(d => `<div class="cal-header">${d}</div>`).join('');
+            
+            for(let i=0; i<firstDay; i++) { html += `<div class="cal-day empty"></div>`; }
+            
+            // NOW USING LOCAL TIME FOR CALENDAR OUTLINE
+            const todayDStr = getLocalYYYYMMDD();
+            
+            for(let i=1; i<=daysInMonth; i++) {
+                const currentDStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
+                
+                let classes = "cal-day";
+                if(currentDStr === todayDStr) classes += " today";
+                
+                const dayOrders = orders.filter(o => o.date === currentDStr);
+                if (dayOrders.length > 0) {
+                    if (dayOrders.some(o => o.status === 'Not Paid')) {
+                        classes += " status-not-paid"; 
+                    } else if (dayOrders.some(o => o.status === 'Paid')) {
+                        classes += " status-paid"; 
+                    } else if (dayOrders.some(o => o.status === 'Done')) {
+                        classes += " status-done"; 
+                    }
+                }
+                
+                html += `<div class="${classes}">${i}</div>`;
+            }
+            calGrid.innerHTML = html;
+        }
+
+        function saveNotes() {
+            const selectedMonth = document.getElementById('monthSelector').value;
+            notes[selectedMonth] = document.getElementById('monthlyNotes').value;
+            localStorage.setItem('biz_notes', JSON.stringify(notes));
+        }
+
+        // ================= TO-DO LIST =================
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            if(input.value.trim() === '') return;
+            todos.push({ id: Date.now(), text: input.value, done: false });
+            input.value = '';
+            saveData();
+        }
+
+        function toggleTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if(todo) { todo.done = !todo.done; saveData(); }
+        }
+
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            saveData();
+        }
+
+        function renderTodos() {
+            const list = document.getElementById('todoList');
+            list.innerHTML = '';
+            todos.forEach(todo => {
+                list.innerHTML += `
+                    <li class="todo-item ${todo.done ? 'done' : ''}">
+                        <span>${todo.text}</span>
+                        <div class="todo-actions">
+                            <button class="btn-done" onclick="toggleTodo(${todo.id})">✓</button>
+                            <button class="btn-del-sm" onclick="deleteTodo(${todo.id})">✕</button>
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
