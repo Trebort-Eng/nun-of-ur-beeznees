@@ -149,11 +149,10 @@
         </div>
 
         <div class="card span-3">
-            <h2>Order Tracker (Controls Calendar Colors)</h2>
+            <h2>Order Tracker (Controls Calendar & Sales)</h2>
             <form id="orderForm" style="flex-direction: row; flex-wrap: wrap; align-items: center;">
                 <input type="date" id="orderDate" required style="flex-grow: 1;">
                 <input type="text" id="orderClient" placeholder="Client Name or Item ordered..." required style="flex-grow: 2;">
-                <!-- NEW: Price Input -->
                 <input type="number" id="orderPrice" placeholder="Price (₱)" required min="0" step="0.01" style="flex-grow: 1;">
                 <select id="orderStatus" required style="flex-grow: 1;">
                     <option value="Not Paid">Not Paid</option>
@@ -164,48 +163,17 @@
             </form>
             <div class="table-container">
                 <table>
-                    <!-- NEW: Price Column Header -->
                     <thead><tr><th>Date</th><th>Client/Item</th><th>Price</th><th>Status</th><th class="action-cell">Action</th></tr></thead>
                     <tbody id="ordersTable"></tbody>
                 </table>
             </div>
         </div>
 
-        <div class="card">
-            <h2>Inventory</h2>
-            <form id="inventoryForm">
-                <input type="text" id="itemName" placeholder="Item Name" required>
-                <input type="text" id="itemCategory" placeholder="Category" list="categoryList" required>
-                <datalist id="categoryList">
-                    <option value="Product"></option>
-                    <option value="Service"></option>
-                    <option value="Material"></option>
-                </datalist>
-                <div class="input-group row" style="margin-bottom:0;">
-                    <input type="number" id="itemStock" placeholder="Stock" required min="0" style="width:50%;">
-                    <input type="number" id="itemPrice" placeholder="Price (₱)" required min="0" step="0.01" style="width:50%;">
-                </div>
-                <button type="submit">Add Item</button>
-            </form>
+        <div class="card span-2">
+            <h2>Sales Records (Auto-Synced)</h2>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Item</th><th>Stock</th><th>Price</th><th class="action-cell">Action</th></tr></thead>
-                    <tbody id="inventoryTable"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Record Sale</h2>
-            <form id="salesForm">
-                <input type="date" id="saleDate" required>
-                <select id="saleItem" required><option value="">Select Item...</option></select>
-                <input type="number" id="saleQty" placeholder="Quantity Sold" required min="1">
-                <button type="submit">Record Sale</button>
-            </form>
-            <div class="table-container">
-                <table>
-                    <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Total</th><th class="action-cell">Action</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Client/Item</th><th>Total</th><th class="action-cell">Action</th></tr></thead>
                     <tbody id="salesTable"></tbody>
                 </table>
             </div>
@@ -249,7 +217,6 @@
         const auth = getAuth(app);
         const dbRef = ref(db, 'business_data');
 
-        let inventory = [];
         let sales = [];
         let expenses = [];
         let orders = [];
@@ -270,14 +237,13 @@
                 onValue(dbRef, (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
-                        inventory = data.inventory || [];
                         sales = data.sales || [];
                         expenses = data.expenses || [];
                         orders = data.orders || [];
                         todos = data.todos || [];
                         notes = data.notes || {};
                     } else {
-                        inventory = []; sales = []; expenses = []; orders = []; todos = []; notes = {};
+                        sales = []; expenses = []; orders = []; todos = []; notes = {};
                     }
                     updateUI();
                 });
@@ -298,7 +264,7 @@
         });
 
         function logout() { signOut(auth); }
-        function saveData() { set(dbRef, { inventory, sales, expenses, orders, todos, notes }); }
+        function saveData() { set(dbRef, { sales, expenses, orders, todos, notes }); }
 
         function getLocalYYYYMMDD() {
             const d = new Date();
@@ -309,7 +275,6 @@
         }
 
         const todayStr = getLocalYYYYMMDD();
-        document.getElementById('saleDate').value = todayStr;
         document.getElementById('expenseDate').value = todayStr;
         document.getElementById('orderDate').value = todayStr;
         const currentMonthStr = todayStr.substring(0, 7);
@@ -324,7 +289,6 @@
         setInterval(updateClock, 1000);
 
         function updateUI() {
-            updateInventoryUI();
             updateSalesUI();
             updateExpensesUI();
             updateOrdersUI();
@@ -332,9 +296,10 @@
             renderTodos();
         }
 
-        // --- UPDATED ORDER LOGIC WITH AUTOMATION ---
+        // --- ORDER SUBMISSION LOGIC ---
         document.getElementById('orderForm').addEventListener('submit', (e) => {
             e.preventDefault();
+            const orderId = 'ord_' + Date.now();
             const date = document.getElementById('orderDate').value;
             const client = document.getElementById('orderClient').value;
             const price = parseFloat(document.getElementById('orderPrice').value);
@@ -342,42 +307,54 @@
             
             let addedToSales = false;
             
-            // If the user selects "Paid" right away when adding the order, record it in sales immediately.
             if (status === "Paid" || status === "Done") {
-                sales.push({ date: date, name: client, qty: 1, total: price });
+                sales.push({ id: orderId, date: date, name: client, total: price });
                 addedToSales = true;
             }
 
-            orders.push({ date, client, price, status, addedToSales });
+            orders.push({ id: orderId, date, client, price, status, addedToSales });
             
             document.getElementById('orderClient').value = '';
             document.getElementById('orderPrice').value = '';
             saveData();
         });
 
-        function deleteOrder(index) { if(confirm("Delete this order record?")) { orders.splice(index, 1); saveData(); } }
+        function deleteOrder(index) {
+            if(confirm("Delete this order record?")) {
+                const order = orders[index];
+                sales = sales.filter(s => s.id !== order.id);
+                orders.splice(index, 1);
+                saveData();
+            }
+        }
         
         function cycleOrderStatus(index) {
-            const currentStatus = orders[index].status;
+            const order = orders[index];
             
-            if (currentStatus === "Not Paid") {
-                orders[index].status = "Paid";
-                
-                // AUTOMATION: If it hasn't been added to sales yet, add it now!
-                if (!orders[index].addedToSales) {
+            // Cycle: Not Paid -> Paid -> Done -> Not Paid
+            if (order.status === "Not Paid") {
+                order.status = "Paid";
+            } else if (order.status === "Paid") {
+                order.status = "Done";
+            } else {
+                order.status = "Not Paid";
+            }
+            
+            // Automatically add or remove from sales based on the new status
+            if (order.status === "Not Paid") {
+                sales = sales.filter(s => s.id !== order.id);
+                order.addedToSales = false;
+            } else {
+                if (!order.addedToSales) {
                     sales.push({
-                        date: orders[index].date,
-                        name: orders[index].client,
-                        qty: 1,
-                        total: orders[index].price || 0
+                        id: order.id,
+                        date: order.date,
+                        name: order.client,
+                        total: order.price || 0
                     });
-                    orders[index].addedToSales = true;
-                    alert("Order Paid! Successfully synced to the Sales tracker.");
+                    order.addedToSales = true;
                 }
             }
-            else if (currentStatus === "Paid") orders[index].status = "Done";
-            else orders[index].status = "Not Paid";
-            
             saveData();
         }
 
@@ -398,49 +375,20 @@
             });
         }
 
-        document.getElementById('inventoryForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            inventory.push({ name: document.getElementById('itemName').value, category: document.getElementById('itemCategory').value, stock: parseInt(document.getElementById('itemStock').value), price: parseFloat(document.getElementById('itemPrice').value) });
-            e.target.reset(); saveData();
-        });
-
-        function deleteInventory(index) { if(confirm("Delete this inventory item?")) { inventory.splice(index, 1); saveData(); } }
-
-        function updateInventoryUI() {
-            const invTable = document.getElementById('inventoryTable'); const saleSelect = document.getElementById('saleItem');
-            invTable.innerHTML = ''; saleSelect.innerHTML = '<option value="">Select Item...</option>';
-            inventory.forEach((item, index) => {
-                invTable.innerHTML += `<tr><td><strong>${item.name}</strong> <br><small style="color:gray">${item.category}</small></td><td>${item.stock}</td><td>₱${item.price.toFixed(2)}</td><td class="action-cell"><button class="btn-del-sm" onclick="deleteInventory(${index})">X</button></td></tr>`;
-                if(item.stock > 0) saleSelect.innerHTML += `<option value="${index}">${item.name} (₱${item.price})</option>`;
-            });
-        }
-
-        document.getElementById('salesForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const itemIndex = document.getElementById('saleItem').value; const qty = parseInt(document.getElementById('saleQty').value); const date = document.getElementById('saleDate').value;
-            if (itemIndex !== "" && inventory[itemIndex].stock >= qty) {
-                const total = inventory[itemIndex].price * qty; inventory[itemIndex].stock -= qty; 
-                sales.push({ date, name: inventory[itemIndex].name, qty, total });
-                document.getElementById('saleQty').value = ''; saveData();
-            } else { alert("Not enough stock available!"); }
-        });
-
-        function deleteSale(index) {
-            if(confirm("Delete this sale? (Stock will be refunded)")) {
-                const sale = sales[index]; const invItem = inventory.find(i => i.name === sale.name);
-                if (invItem) invItem.stock += sale.qty;
-                sales.splice(index, 1); saveData();
-            }
-        }
-
         function updateSalesUI() {
             const sTable = document.getElementById('salesTable'); sTable.innerHTML = ''; let totalSales = 0;
             const displaySales = sales.map((sale, index) => ({ sale, index })).reverse();
             displaySales.forEach(item => {
-                sTable.innerHTML += `<tr><td>${item.sale.date.substring(5)}</td><td>${item.sale.name}</td><td>${item.sale.qty}</td><td>₱${item.sale.total.toFixed(2)}</td><td class="action-cell"><button class="btn-del-sm" onclick="deleteSale(${item.index})">X</button></td></tr>`;
+                sTable.innerHTML += `<tr>
+                    <td>${item.sale.date.substring(5)}</td>
+                    <td>${item.sale.name}</td>
+                    <td>₱${item.sale.total.toFixed(2)}</td>
+                    <td class="action-cell"></td>
+                </tr>`;
             });
             sales.forEach(s => totalSales += s.total);
-            document.getElementById('totalSales').innerText = `₱${totalSales.toFixed(2)}`; updateNetProfit();
+            document.getElementById('totalSales').innerText = `₱${totalSales.toFixed(2)}`;
+            updateNetProfit();
         }
 
         document.getElementById('expenseForm').addEventListener('submit', (e) => {
@@ -458,11 +406,13 @@
                 eTable.innerHTML += `<tr><td>${item.exp.date.substring(5)}</td><td>${item.exp.desc}</td><td>₱${item.exp.amount.toFixed(2)}</td><td class="action-cell"><button class="btn-del-sm" onclick="deleteExpense(${item.index})">X</button></td></tr>`;
             });
             expenses.forEach(e => totalExpenses += e.amount);
-            document.getElementById('totalExpenses').innerText = `₱${totalExpenses.toFixed(2)}`; updateNetProfit();
+            document.getElementById('totalExpenses').innerText = `₱${totalExpenses.toFixed(2)}`;
+            updateNetProfit();
         }
 
         function updateNetProfit() {
-            const tSales = sales.reduce((sum, s) => sum + s.total, 0); const tExp = expenses.reduce((sum, e) => sum + e.amount, 0);
+            const tSales = sales.reduce((sum, s) => sum + s.total, 0);
+            const tExp = expenses.reduce((sum, e) => sum + e.amount, 0);
             document.getElementById('netProfit').innerText = `₱${(tSales - tExp).toFixed(2)}`;
         }
 
@@ -475,7 +425,9 @@
             sales.forEach(s => { if(s.date.startsWith(selectedMonth)) mSales += s.total; });
             expenses.forEach(e => { if(e.date.startsWith(selectedMonth)) mExp += e.amount; });
             
-            document.getElementById('monthSales').innerText = `₱${mSales.toFixed(2)}`; document.getElementById('monthExpenses').innerText = `₱${mExp.toFixed(2)}`; document.getElementById('monthProfit').innerText = `₱${(mSales - mExp).toFixed(2)}`;
+            document.getElementById('monthSales').innerText = `₱${mSales.toFixed(2)}`;
+            document.getElementById('monthExpenses').innerText = `₱${mExp.toFixed(2)}`;
+            document.getElementById('monthProfit').innerText = `₱${(mSales - mExp).toFixed(2)}`;
             document.getElementById('monthlyNotes').value = notes[selectedMonth] || '';
             renderCalendar(selectedMonth);
         }
@@ -523,7 +475,7 @@
             });
         }
 
-        window.updateMonthView = updateMonthView; window.logout = logout; window.deleteOrder = deleteOrder; window.cycleOrderStatus = cycleOrderStatus; window.deleteInventory = deleteInventory; window.deleteSale = deleteSale; window.deleteExpense = deleteExpense; window.saveNotes = saveNotes; window.addTodo = addTodo; window.toggleTodo = toggleTodo; window.deleteTodo = deleteTodo;
+        window.updateMonthView = updateMonthView; window.logout = logout; window.deleteOrder = deleteOrder; window.cycleOrderStatus = cycleOrderStatus; window.deleteExpense = deleteExpense; window.saveNotes = saveNotes; window.addTodo = addTodo; window.toggleTodo = toggleTodo; window.deleteTodo = deleteTodo;
 
     </script>
 </body>
